@@ -2,7 +2,7 @@
 
 ## 📋 概要
 
-このシステムは、Streamlit CloudにホストされたRAG ChatBotアプリへのアクセスを、IPアドレスベースで制限するプロキシ認証機能を提供します。
+このシステムは、Streamlit CloudにホストされたRAG ChatBotアプリへのアクセスを、IPアドレスベースで制限するプロキシ認証機能を提供します。設定情報は環境変数で管理され、コードに機密情報が含まれません。
 
 ## 🏗️ アーキテクチャ
 
@@ -13,7 +13,7 @@
 ### 動作フロー
 1. ユーザーがAmplify URLにアクセス
 2. JavaScriptでユーザーのIPアドレスを取得
-3. 許可されたIP範囲と照合
+3. 環境変数で設定された許可IP範囲と照合
 4. ✅ 許可 → Streamlit Cloudアプリにリダイレクト
 5. ❌ 拒否 → アクセスブロック画面を表示
 
@@ -23,63 +23,96 @@
 
 1. **AWS Amplify Console**にアクセス
 2. **"Create new app"** → **"Host web app"**
-3. **"Deploy without Git provider"** を選択
+3. **"GitHub"** を選択し、リポジトリを接続
 
-### Step 2: ファイルアップロード
+### Step 2: 環境変数設定
 
-1. **index.html** をダウンロード
-2. **amplify.yml** をダウンロード  
-3. ZIPファイルを作成: `ip-auth-proxy.zip`
-4. AmplifyにZIPファイルをアップロード
+**Amplify Console > App settings > Environment variables** で以下を設定:
+
+```
+STREAMLIT_URL = https://your-actual-streamlit-app.streamlit.app
+ALLOWED_IPS = 192.168.28.0/24,203.0.113.0/24,10.0.0.0/8
+REDIRECT_DELAY = 3
+```
+
+#### 設定例
+
+| 環境変数名 | 設定値 | 説明 |
+|-----------|--------|------|
+| `STREAMLIT_URL` | `https://rag-chatbot-ui.streamlit.app` | Streamlit CloudアプリのURL |
+| `ALLOWED_IPS` | `192.168.28.0/24,10.0.0.0/8` | 許可IP範囲（カンマ区切り） |
+| `REDIRECT_DELAY` | `3` | リダイレクト待機時間（秒） |
 
 ### Step 3: アプリ設定
 
 ```
 App name: rag-chatbot-ip-auth
 Environment: production
+Build settings: amplify.yml (自動検出)
 ```
 
-### Step 4: IP範囲設定
+### Step 4: デプロイ実行
 
-**index.html** の以下の部分を編集:
+環境変数設定後、**"Redeploy this version"** をクリックしてビルドを実行します。
 
-```javascript
-const CONFIG = {
-    STREAMLIT_URL: 'https://your-streamlit-app.streamlit.app', // 実際のURL
-    ALLOWED_IPS: [
-        '203.0.113.0/24',      // 本社オフィス
-        '198.51.100.0/24',     // 支社オフィス
-        '10.0.0.0/8',          // VPN範囲
-        '192.168.0.0/16',      // ローカルネットワーク
-        // 必要に応じて追加
-    ],
-    REDIRECT_DELAY: 3
-};
+## 🔧 環境変数詳細
+
+### STREAMLIT_URL
+
+Streamlit CloudアプリのフルURLを指定します。
+
+```bash
+# 正しい例
+STREAMLIT_URL=https://rag-chatbot-ui.streamlit.app
+
+# 間違った例
+STREAMLIT_URL=rag-chatbot-ui.streamlit.app  # httpス://が必要
 ```
 
-## 🔧 設定項目
+### ALLOWED_IPS
 
-### IP範囲設定例
+許可するIP範囲をカンマ区切りで指定します。CIDR記法と単一IPの両方をサポートします。
+
+```bash
+# 複数の範囲を指定する例
+ALLOWED_IPS=192.168.28.0/24,203.0.113.0/24,10.0.0.0/8,198.51.100.50
+
+# 単一の範囲のみ
+ALLOWED_IPS=192.168.28.0/24
+
+# 特定のIPアドレスのみ
+ALLOWED_IPS=203.0.113.50,203.0.113.51,203.0.113.52
+```
+
+#### IP範囲設定例
 
 | ネットワーク種別 | CIDR表記例 | 説明 |
 |---------------|------------|------|
 | 単一IP | `203.0.113.50` | 特定の1つのIPアドレス |
-| オフィス | `203.0.113.0/24` | 254個のIPアドレス |
+| 小規模オフィス | `192.168.28.0/24` | 254個のIPアドレス |
 | VPN | `10.0.0.0/8` | 大規模プライベートネットワーク |
-| 支社 | `192.168.1.0/24` | 小規模オフィス |
+| 支社 | `203.0.113.0/24` | 中規模オフィス |
 
-### Streamlit Cloud URL
+### REDIRECT_DELAY
 
-Streamlit Cloudアプリの実際のURLに変更:
+認証成功後のリダイレクト待機時間（秒）を指定します。
 
-```javascript
-STREAMLIT_URL: 'https://rag-chatbot-ui-actual-url.streamlit.app'
+```bash
+# デフォルト値
+REDIRECT_DELAY=3
+
+# 即座にリダイレクト
+REDIRECT_DELAY=0
+
+# 長めの待機時間
+REDIRECT_DELAY=5
 ```
 
 ## 📊 セキュリティ機能
 
 ### ✅ 実装済み機能
 
+- **環境変数管理**: 機密情報のコード外管理
 - **IPアドレス自動検出**: 複数のサービスを使用
 - **CIDR範囲チェック**: ネットワーク範囲でのアクセス制御
 - **WebRTC フォールバック**: 外部サービス失敗時の代替手段
@@ -92,7 +125,7 @@ STREAMLIT_URL: 'https://rag-chatbot-ui-actual-url.streamlit.app'
 - **開発者ツール検知**: F12キー監視
 - **コンソール警告**: 不正操作の抑制
 - **エラーハンドリング**: 詳細なエラー情報の非表示
-- **タイムアウト処理**: 長時間の処理を防止
+- **ビルド時検証**: 必須環境変数の存在チェック
 
 ## 🧪 テスト手順
 
@@ -108,34 +141,43 @@ STREAMLIT_URL: 'https://rag-chatbot-ui-actual-url.streamlit.app'
    - "アクセス拒否" メッセージ確認
    - Streamlitアプリへの直接アクセス不可確認
 
-### デバッグ方法
+### 環境変数テスト
 
-ブラウザの開発者ツールで以下を確認:
+ビルドログで環境変数が正しく適用されているか確認:
 
-```javascript
-// IPアドレス確認
-console.log('検出されたIP:', userIP);
-
-// 許可状態確認  
-console.log('アクセス許可:', isAllowed);
-
-// 設定確認
-console.log('許可IP範囲:', CONFIG.ALLOWED_IPS);
+```bash
+# Amplify Console > Build logs で確認
+Environment variables check:
+STREAMLIT_URL=https://your-app.streamlit.app
+ALLOWED_IPS=192.168.28.0/24,10.0.0.0/8
+REDIRECT_DELAY=3
+✅ Environment variables substituted successfully
 ```
 
 ## 🔄 更新・メンテナンス
 
 ### IP範囲の変更
 
-1. **index.html** を編集
-2. `ALLOWED_IPS` 配列を更新
-3. Amplifyに再アップロード
+1. **Amplify Console** > **Environment variables**
+2. `ALLOWED_IPS` を編集
+3. **"Redeploy this version"** をクリック
 
 ### Streamlit URL変更
 
-1. **index.html** を編集
-2. `STREAMLIT_URL` を更新
-3. Amplifyに再アップロード
+1. **Amplify Console** > **Environment variables**
+2. `STREAMLIT_URL` を編集
+3. **"Redeploy this version"** をクリック
+
+### 設定変更の例
+
+```bash
+# 例: 新しいオフィスのIP範囲を追加
+# 変更前
+ALLOWED_IPS=192.168.28.0/24
+
+# 変更後
+ALLOWED_IPS=192.168.28.0/24,203.0.113.0/24
+```
 
 ## ⚠️ 制限事項
 
@@ -150,7 +192,7 @@ console.log('許可IP範囲:', CONFIG.ALLOWED_IPS);
 
 - **VPN利用**: 固定IPのVPNサーバー経由でのアクセス
 - **IP範囲拡大**: より広範囲のCIDRブロック設定
-- **手動更新**: IPアドレス変更時の設定更新
+- **手動更新**: IPアドレス変更時の環境変数更新
 
 ## 📞 トラブルシューティング
 
@@ -158,57 +200,75 @@ console.log('許可IP範囲:', CONFIG.ALLOWED_IPS);
 
 | 問題 | 原因 | 解決策 |
 |------|------|--------|
+| ビルドエラー「環境変数未設定」 | 必須環境変数の未設定 | Amplify環境変数を確認・設定 |
 | IP検出失敗 | 外部サービスブロック | VPN無効化、別ネットワーク試行 |
-| 認証後リダイレクト失敗 | Streamlit URL間違い | URL確認・修正 |
-| 社内からアクセス拒否 | IP範囲設定ミス | CIDR表記確認 |
+| 認証後リダイレクト失敗 | STREAMLIT_URL間違い | 環境変数のURL確認・修正 |
+| 社内からアクセス拒否 | ALLOWED_IPS設定ミス | CIDR表記と実際のIPを確認 |
 
-### ログ確認
+### デバッグ手順
 
-ブラウザコンソールで詳細ログを確認:
+1. **ビルドログ確認**
+   ```bash
+   # Amplify Console > Build details > Build logs
+   # 環境変数置換の成功/失敗を確認
+   ```
 
-```javascript
-// エラーログ確認
-console.log('エラー情報をここで確認');
-```
+2. **ブラウザコンソール確認**
+   ```javascript
+   // F12 > Console で以下を確認
+   console.log('検出されたIP:', userIP);
+   console.log('許可状態:', isAllowed);
+   console.log('設定:', CONFIG);
+   ```
+
+3. **IP検出テスト**
+   ```bash
+   # 現在のIPアドレスを確認
+   curl -s https://api.ipify.org
+   ```
 
 ## 🎯 運用開始チェックリスト
 
 ### デプロイ前確認
 
-- [ ] IP範囲設定完了
-- [ ] Streamlit URL設定完了  
-- [ ] amplify.yml設定完了
-- [ ] テスト環境での動作確認完了
+- [ ] `STREAMLIT_URL` 環境変数設定完了
+- [ ] `ALLOWED_IPS` 環境変数設定完了
+- [ ] `REDIRECT_DELAY` 環境変数設定完了
+- [ ] リポジトリのindex.html、amplify.ymlファイル配置完了
 
 ### デプロイ後確認
 
-- [ ] Amplify URLアクセス確認
+- [ ] Amplifyビルド成功確認
+- [ ] 環境変数置換成功確認（ビルドログ）
 - [ ] 社内IPからの認証成功確認
 - [ ] 外部IPからのアクセス拒否確認
 - [ ] Streamlitアプリへのリダイレクト確認
 - [ ] エラーハンドリング動作確認
 
-## 💡 カスタマイズ例
+## 💡 運用のベストプラクティス
 
-### デザインのカスタマイズ
+### セキュリティ
 
-```css
-/* 企業カラーに変更 */
-.logo {
-    background: linear-gradient(135deg, #your-color1, #your-color2);
-}
-
-/* メッセージのカスタマイズ */
-.subtitle {
-    content: "あなたの会社名 セキュアシステム";
-}
+```bash
+# 定期的なIPアドレス監視
+# 月次でアクセスログをレビュー
+# 不審なアクセス試行の検知
 ```
 
-### 機能拡張
+### メンテナンス
 
-- **ログ記録**: アクセス試行の記録機能
-- **通知機能**: 不正アクセス試行時のアラート
-- **時間制限**: 特定時間帯のみアクセス許可
-- **多要素認証**: IPアドレス + パスワード認証
+```bash
+# 四半期ごとのIP範囲見直し
+# Streamlit URLの有効性確認
+# バックアップ設定の確認
+```
 
-これで完全なIP制限認証システムが完成します！
+### 監視
+
+```bash
+# CloudWatch Logs でアクセスパターン監視
+# 異常なアクセス増加の検知
+# サービス可用性の監視
+```
+
+これで完全に環境変数ベースの設定管理が実現できます！
