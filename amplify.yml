@@ -3,14 +3,29 @@ frontend:
   phases:
     preBuild:
       commands:
-        - echo "Starting Amplify build for IP authentication proxy"
+        - echo "Building IP Authentication Proxy for RAG ChatBot"
+        - echo "Current directory:" && pwd
+        - echo "Files:" && ls -la
     build:
       commands:
-        - echo "Static site build - no build process required"
-        - echo "Deployment timestamp:" $(date)
+        - echo "Preparing static files for deployment"
+        - echo "No build process required for static HTML"
+        - echo "Validating HTML structure"
+        - |
+          if [ -f "index.html" ]; then
+            echo "✅ index.html found"
+          else
+            echo "❌ index.html not found"
+            exit 1
+          fi
+    postBuild:
+      commands:
+        - echo "✅ Build completed successfully"
+        - echo "IP Authentication Proxy ready for deployment"
   artifacts:
-    baseDirectory: /
+    baseDirectory: .
     files:
+      - index.html
       - '**/*'
   cache:
     paths: []
