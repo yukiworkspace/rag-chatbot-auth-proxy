@@ -156,18 +156,11 @@
     </div>
 
     <script>
-        // 設定
+        // 環境変数から設定を取得
         const CONFIG = {
-            STREAMLIT_URL: 'https://rag-chatbot-ui.streamlit.app', // Streamlit CloudのURL
-            ALLOWED_IPS: [
-                // 社内IP範囲を設定
-                '203.0.113.0/24',      // 例: 本社オフィス
-                '198.51.100.0/24',     // 例: 支社オフィス
-                '10.0.0.0/8',          // 例: VPN範囲
-                '192.168.0.0/16',      // 例: ローカルネットワーク
-                '172.16.0.0/12'        // 例: プライベートネットワーク
-            ],
-            REDIRECT_DELAY: 3 // 秒
+            STREAMLIT_URL: '%%STREAMLIT_URL%%',
+            ALLOWED_IPS: '%%ALLOWED_IPS%%'.split(',').map(ip => ip.trim()),
+            REDIRECT_DELAY: parseInt('%%REDIRECT_DELAY%%') || 3
         };
 
         class IPChecker {
