@@ -6,11 +6,13 @@ frontend:
         - echo "Building IP Authentication Proxy for RAG ChatBot"
         - echo "Current directory:" && pwd
         - echo "Files:" && ls -la
+        - echo "Environment variables check:"
+        - echo "STREAMLIT_URL=${STREAMLIT_URL}"
+        - echo "ALLOWED_IPS=${ALLOWED_IPS}"
+        - echo "REDIRECT_DELAY=${REDIRECT_DELAY}"
     build:
       commands:
-        - echo "Preparing static files for deployment"
-        - echo "No build process required for static HTML"
-        - echo "Validating HTML structure"
+        - echo "Preparing static files with environment variable substitution"
         - |
           if [ -f "index.html" ]; then
             echo "✅ index.html found"
@@ -18,10 +20,39 @@ frontend:
             echo "❌ index.html not found"
             exit 1
           fi
+        - echo "Substituting environment variables in index.html"
+        - |
+          # 環境変数が設定されているかチェック
+          if [ -z "$STREAMLIT_URL" ]; then
+            echo "❌ STREAMLIT_URL environment variable is not set"
+            exit 1
+          fi
+          if [ -z "$ALLOWED_IPS" ]; then
+            echo "❌ ALLOWED_IPS environment variable is not set"
+            exit 1
+          fi
+          
+          # デフォルト値設定
+          REDIRECT_DELAY=${REDIRECT_DELAY:-3}
+          
+          # 環境変数の置換実行
+          sed -i "s|%%STREAMLIT_URL%%|${STREAMLIT_URL}|g" index.html
+          sed -i "s|%%ALLOWED_IPS%%|${ALLOWED_IPS}|g" index.html
+          sed -i "s|%%REDIRECT_DELAY%%|${REDIRECT_DELAY}|g" index.html
+          
+          echo "✅ Environment variables substituted successfully"
+          
+          # 置換結果の確認
+          echo "Checking substitution results:"
+          grep -n "STREAMLIT_URL\|ALLOWED_IPS\|REDIRECT_DELAY" index.html || echo "All placeholders have been replaced"
     postBuild:
       commands:
         - echo "✅ Build completed successfully"
         - echo "IP Authentication Proxy ready for deployment"
+        - echo "Configuration summary:"
+        - echo "- Streamlit URL: ${STREAMLIT_URL}"
+        - echo "- Allowed IPs: ${ALLOWED_IPS}"
+        - echo "- Redirect delay: ${REDIRECT_DELAY} seconds"
   artifacts:
     baseDirectory: .
     files:
